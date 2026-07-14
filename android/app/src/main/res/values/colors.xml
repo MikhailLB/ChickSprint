@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark leafy-green tone matched to the icon's corner grass. -->
+    <color name="launch_bg">#2E5A1A</color>
+</resources>

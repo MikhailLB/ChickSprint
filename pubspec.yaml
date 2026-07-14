@@ -1,0 +1,58 @@
+name: chicksprintgame
+description: "Chick Sprint - a casual memory arcade game."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  webview_flutter: ^4.10.0
+  shared_preferences: ^2.3.3
+  connectivity_plus: ^6.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/
+    - assets/Icon.png
+    - assets/Game_Name.webp
+    - assets/Vertical_Loading_Screen.webp
+    - assets/Horizontal_Loading_Screen.webp
+    - assets/Vertical_Notifications_Screen.webp
+    - assets/Horizontal_Notifications_Screen.webp
+    - assets/Vertical_Nowifi_Screen.webp
+    - assets/Horizontal_Nowifi_Screen.webp
+    - assets/bg1_asset.jpg
+    - assets/bg2_asset.jpg
+    - assets/bg3_asset.jpg
+    - assets/chicken_asset.webp
+    - assets/coin_asset.webp
+    - assets/cracked_eggshell_halves_asset.webp
+    - assets/dree_platform_asset.webp
+    - assets/egg_asset.webp
+    - assets/fire_asset.webp
+    - assets/small_wooden_crate_asset.webp
+    - assets/stone_platform_asset.webp
+    - assets/straw_nest_strict_asset.webp
+
+flutter_launcher_icons:
+  # NOTE: adaptive icon is hand-written in
+  # android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+  # so we intentionally do NOT set adaptive_icon_* fields — otherwise
+  # flutter_launcher_icons would overwrite our manual configuration
+  # and the corners of the art would get eaten by the circle mask.
+  android: true
+  ios: false
+  image_path: "assets/Icon.png"
+  min_sdk_android: 21
