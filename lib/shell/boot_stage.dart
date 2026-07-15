@@ -98,7 +98,8 @@ class _BootStageState extends State<BootStage>
   }
 
   Future<void> _steerToDestination() async {
-    widget.pushHub.onTokenRotate = _onTokenRotate;
+    // Note: onTokenRotate is installed once in main.dart so it
+    // survives navigation off this stage. Don't rebind it here.
     await widget.pushHub.boot();
 
     await _pulseBarTo(0.15);
@@ -286,19 +287,6 @@ class _BootStageState extends State<BootStage>
         ),
       ),
     );
-  }
-
-  void _onTokenRotate(String freshToken) async {
-    // Re-POST the gateway with the rotated token so the backend knows
-    // where to reach this user for push.
-    try {
-      final locale = Platform.localeName.replaceAll('-', '_');
-      final payload = await widget.trackerHub.assemblePayload(
-        locale: locale,
-        pushToken: freshToken,
-      );
-      unawaited(widget.gatewayApi.submit(payload));
-    } catch (_) {}
   }
 
   // ─── UI ────────────────────────────────────────────────────────

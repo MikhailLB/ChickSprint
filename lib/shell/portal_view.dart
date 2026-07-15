@@ -123,11 +123,25 @@ class _PortalViewState extends State<PortalView>
       _web.loadRequest(Uri.parse(url));
     };
 
-    // Debounced offline detection (pitfalls §3.C).
+    // If the first-launch gateway call was made while offline (or the
+    // OneLink hop's network was flaky enough that getToken() returned
+    // null), the backend currently thinks push_token is missing. Kick
+    // an FCM token refresh now that we're stable inside the portal —
+    // if it comes back non-null, the app-scoped onTokenRotate handler
+    // re-POSTs the gateway with the fresh token.
+    widget.pushHub.ensureFreshToken();
+
+    // Debounced offline detection (pitfalls §3.C) + FCM token
+    // refresh when we regain connectivity. Without this, an app
+    // booted while offline (or during a flaky OneLink hop) never
+    // reports its push token to the backend — the gateway thinks
+    // push_token is null and no notifications can be sent.
     _connSub = widget.netSensor.changes.listen((results) {
       final allNone = results.every((r) => r == ConnectivityResult.none);
       if (!allNone) {
         _offlineDebounce?.cancel();
+        // Rising edge into "network back up" — chase the FCM token.
+        widget.pushHub.ensureFreshToken();
         return;
       }
       _offlineDebounce?.cancel();

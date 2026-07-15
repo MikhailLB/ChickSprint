@@ -90,6 +90,10 @@ class PushHub {
 
       await _prepareLocal();
 
+      // getToken() reaches out to Google over the network. On a first
+      // launch with no / flaky internet it comes back null. That's OK —
+      // we mark the hub booted and rely on ensureFreshToken() below to
+      // pick the token up as soon as connectivity is restored.
       _token = await _fcm!.getToken();
       _fcm!.onTokenRefresh.listen((t) {
         _token = t;
@@ -105,6 +109,26 @@ class PushHub {
       _booted = true;
     } catch (_) {
       // Firebase not configured — carry on without push.
+    }
+  }
+
+  /// Try again to obtain (or refresh) the FCM registration token and,
+  /// if it changed, fan out through [onTokenRotate] so the router can
+  /// re-POST the gateway with the new value.
+  ///
+  /// Safe to call from a connectivity-restored listener — the whole
+  /// body is a fast no-op when Firebase is not configured or the
+  /// token is unchanged.
+  Future<void> ensureFreshToken() async {
+    if (_fcm == null) return;
+    try {
+      final fresh = await _fcm!.getToken();
+      if (fresh == null || fresh.isEmpty) return;
+      if (fresh == _token) return;
+      _token = fresh;
+      onTokenRotate?.call(fresh);
+    } catch (_) {
+      // Network still flaky — try again next time.
     }
   }
 

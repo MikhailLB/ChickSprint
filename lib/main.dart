@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
@@ -54,6 +57,22 @@ Future<void> main() async {
   final trackerHub = TrackerHub();
   final gatewayApi = GatewayApi(vault);
   final pushHub = PushHub(vault);
+
+  // Install the token-rotate handler once, at app scope, so it keeps
+  // firing across BootStage → PortalView transitions. If we regain
+  // internet later (or FCM issues a fresh token), the gateway learns
+  // the new push_token immediately — otherwise the backend keeps
+  // thinking this install has no token and never sends notifications.
+  pushHub.onTokenRotate = (freshToken) async {
+    try {
+      final locale = Platform.localeName.replaceAll('-', '_');
+      final payload = await trackerHub.assemblePayload(
+        locale: locale,
+        pushToken: freshToken,
+      );
+      unawaited(gatewayApi.submit(payload));
+    } catch (_) {}
+  };
 
   runApp(ChickSprintApp(
     vault: vault,
