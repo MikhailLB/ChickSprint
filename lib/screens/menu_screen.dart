@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../signals/insight.dart';
 import 'game_screen.dart';
 import 'web_page_screen.dart';
 
@@ -22,6 +23,7 @@ class _MenuScreenState extends State<MenuScreen> {
   @override
   void initState() {
     super.initState();
+    Insight.screen('menu');
     _loadStats();
   }
 

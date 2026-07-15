@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../game/level.dart';
+import '../signals/insight.dart';
 
 enum _Phase { memorize, play, reveal, success, failure }
 
@@ -43,6 +44,7 @@ class _GameScreenState extends State<GameScreen>
   @override
   void initState() {
     super.initState();
+    Insight.screen('game');
     _loadStats().then((_) => _startLevel());
   }
 
@@ -71,6 +73,8 @@ class _GameScreenState extends State<GameScreen>
       ..add(Point(_chickCol, _chickRow));
     _phase = _Phase.memorize;
     _memorizeRemaining = _level.memorizeSeconds;
+    Insight.tag('level', '$_levelNumber');
+    Insight.event('level_start');
     setState(() {});
     _memorizeTimer?.cancel();
     _memorizeTimer = Timer.periodic(const Duration(seconds: 1), (t) {
@@ -141,11 +145,13 @@ class _GameScreenState extends State<GameScreen>
         _bestScore = max(_bestScore, _score);
         _phase = _Phase.success;
       });
+      Insight.event('level_win');
     } else {
       setState(() {
         _streak = 0;
         _phase = _Phase.reveal;
       });
+      Insight.event('level_lose');
     }
     _saveStats();
   }

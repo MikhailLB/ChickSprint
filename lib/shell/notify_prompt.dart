@@ -4,6 +4,7 @@ import '../core/net_sensor.dart';
 import '../core/push_hub.dart';
 import '../core/vault.dart';
 import '../env/facade.dart';
+import '../signals/insight.dart';
 import 'portal_view.dart' deferred as portal;
 
 /// NotifyPrompt — one-shot promo for enabling push. Uses the static
@@ -15,7 +16,7 @@ import 'portal_view.dart' deferred as portal;
 ///     OS-banned latch is set inside PushHub.requestPermission.
 ///   • SKIP   — same gradient chip as Accept, but defers the prompt
 ///     for [EnvFacade.notifyCooldownSeconds].
-class NotifyPrompt extends StatelessWidget {
+class NotifyPrompt extends StatefulWidget {
   const NotifyPrompt({
     super.key,
     required this.vault,
@@ -29,21 +30,40 @@ class NotifyPrompt extends StatelessWidget {
   final NetSensor netSensor;
   final String contentUrl;
 
+  @override
+  State<NotifyPrompt> createState() => _NotifyPromptState();
+}
+
+class _NotifyPromptState extends State<NotifyPrompt> {
+  @override
+  void initState() {
+    super.initState();
+    Insight.screen('push_invite');
+  }
+
   Future<void> _handleAccept(BuildContext context) async {
-    final granted = await pushHub.requestPermission();
+    Insight.event('push_invite_accept');
+    // The pushHub.requestPermission() returns the REAL result of the
+    // OS dialog — do not consult the vault here, that reflects a cached
+    // pre-tap state and is a documented source of wrong analytics tags.
+    final granted = await widget.pushHub.requestPermission();
+    Insight.tag('notif_permission', granted ? 'granted' : 'denied');
+    Insight.event(granted ? 'push_granted' : 'push_denied');
     if (!granted) {
       final until = DateTime.now().millisecondsSinceEpoch ~/ 1000 +
           EnvFacade.notifyCooldownSeconds;
-      await vault.deferNotifyPromptUntil(until);
+      await widget.vault.deferNotifyPromptUntil(until);
     }
     if (!context.mounted) return;
     await _leaveToPortal(context);
   }
 
   Future<void> _handleSkip(BuildContext context) async {
+    Insight.event('push_invite_skip');
+    Insight.tag('notif_permission', 'skipped');
     final until = DateTime.now().millisecondsSinceEpoch ~/ 1000 +
         EnvFacade.notifyCooldownSeconds;
-    await vault.deferNotifyPromptUntil(until);
+    await widget.vault.deferNotifyPromptUntil(until);
     if (!context.mounted) return;
     await _leaveToPortal(context);
   }
@@ -53,10 +73,10 @@ class NotifyPrompt extends StatelessWidget {
     if (!context.mounted) return;
     Navigator.of(context).pushReplacement(MaterialPageRoute(
       builder: (_) => portal.PortalView(
-        initialUrl: contentUrl,
-        vault: vault,
-        pushHub: pushHub,
-        netSensor: netSensor,
+        initialUrl: widget.contentUrl,
+        vault: widget.vault,
+        pushHub: widget.pushHub,
+        netSensor: widget.netSensor,
       ),
     ));
   }

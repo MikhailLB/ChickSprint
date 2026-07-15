@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:clarity_flutter/clarity_flutter.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
@@ -14,6 +15,7 @@ import 'core/push_hub.dart';
 import 'core/tracker_hub.dart';
 import 'core/vault.dart';
 import 'core/wire_client.dart';
+import 'signals/insight.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -74,11 +76,14 @@ Future<void> main() async {
     } catch (_) {}
   };
 
-  runApp(ChickSprintApp(
-    vault: vault,
-    netSensor: netSensor,
-    trackerHub: trackerHub,
-    gatewayApi: gatewayApi,
-    pushHub: pushHub,
+  runApp(ClarityWidget(
+    clarityConfig: Insight.config,
+    app: ChickSprintApp(
+      vault: vault,
+      netSensor: netSensor,
+      trackerHub: trackerHub,
+      gatewayApi: gatewayApi,
+      pushHub: pushHub,
+    ),
   ));
 }

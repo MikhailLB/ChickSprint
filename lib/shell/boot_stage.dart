@@ -9,6 +9,7 @@ import '../core/push_hub.dart';
 import '../core/tracker_hub.dart';
 import '../core/vault.dart';
 import '../core/gateway_api.dart';
+import '../signals/insight.dart';
 import '../state/gateway_reply.dart';
 import '../state/route_mode.dart';
 import 'portal_view.dart' deferred as portal;
@@ -78,6 +79,7 @@ class _BootStageState extends State<BootStage>
       setState(() => _dotFrame = (_dotFrame + 1) % 3);
     });
 
+    Insight.screen('loading');
     _steerToDestination();
   }
 
@@ -151,14 +153,19 @@ class _BootStageState extends State<BootStage>
       locale: locale,
       pushToken: widget.pushHub.token,
     );
+    _identifyFromPayload(payload);
     final reply = await widget.gatewayApi.submit(payload);
 
     if (!mounted) return;
     if (reply.ok && reply.hasUrl) {
       await widget.vault.commitMode(RouteMode.portal);
+      Insight.tag('run_mode', 'portal');
+      Insight.event('route_portal');
       await _completeBarAndNavigate(() => _routeToPortal(reply.url!));
     } else {
       await widget.vault.commitMode(RouteMode.arena);
+      Insight.tag('run_mode', 'arena');
+      Insight.event('route_arena');
       await _completeBarAndNavigate(_routeToArena);
     }
   }
@@ -177,6 +184,8 @@ class _BootStageState extends State<BootStage>
       final safe = sanitisePushUri(cold);
       if (safe != null) {
         if (!mounted) return;
+        Insight.event('route_push_link');
+        Insight.tag('run_mode', 'portal');
         await _completeBarAndNavigate(() => _routeToPortal(safe.toString()));
         return;
       }
@@ -196,12 +205,17 @@ class _BootStageState extends State<BootStage>
       locale: locale,
       pushToken: widget.pushHub.token,
     );
+    _identifyFromPayload(payload);
     final GatewayReply reply = await widget.gatewayApi.submit(payload);
 
     if (!mounted) return;
     if (reply.ok && reply.hasUrl) {
+      Insight.tag('run_mode', 'portal');
+      Insight.event('route_portal');
       await _completeBarAndNavigate(() => _routeToPortal(reply.url!));
     } else if (savedPortalUrl != null && savedPortalUrl.isNotEmpty) {
+      Insight.tag('run_mode', 'portal');
+      Insight.event('route_cached_link');
       await _completeBarAndNavigate(() => _routeToPortal(savedPortalUrl));
     } else {
       await _completeBarAndNavigate(
@@ -209,8 +223,27 @@ class _BootStageState extends State<BootStage>
     }
   }
 
+  /// Group the Clarity session by AppsFlyer id + attach attribution
+  /// tags. Called immediately after `assemblePayload` is done so the
+  /// tags land on the same session the gateway request belongs to.
+  void _identifyFromPayload(Map<String, dynamic> payload) {
+    String pick(String key) => payload[key]?.toString() ?? '';
+    Insight.identify(
+      pick('af_id'),
+      tags: <String, String>{
+        'af_status': pick('af_status'),
+        'media_source': pick('media_source'),
+        'campaign': pick('campaign'),
+        'os': pick('os'),
+        'locale': pick('locale'),
+      },
+    );
+  }
+
   // ─── Returning arena user ──────────────────────────────────────
   Future<void> _runReturningArena() async {
+    Insight.tag('run_mode', 'arena');
+    Insight.event('route_arena');
     await _pulseBarTo(0.5, ms: 500);
     await Future<void>.delayed(const Duration(milliseconds: 300));
     await _completeBarAndNavigate(_routeToArena);
@@ -240,6 +273,14 @@ class _BootStageState extends State<BootStage>
         ),
       ));
     } else {
+      // Returning users who skip the invite screen still need a
+      // notif_permission tag so the funnel is never blank.
+      final String label = widget.vault.wasNotifyGranted()
+          ? 'granted'
+          : widget.vault.wasNotifyOsBanned()
+              ? 'os_denied'
+              : 'snoozed';
+      Insight.tag('notif_permission', label);
       Navigator.of(context).pushReplacement(MaterialPageRoute(
         builder: (_) => portal.PortalView(
           initialUrl: url,
@@ -266,6 +307,9 @@ class _BootStageState extends State<BootStage>
   void _swapToOffline({required bool fromFirstLaunch}) {
     if (_left) return;
     _left = true;
+    Insight.event('route_offline');
+    Insight.tag('offline_source',
+        fromFirstLaunch ? 'first_launch' : 'returning');
     // Snapshot services now — `widget.*` is safe to read at this point
     // even though the OfflineStage's retry builder will fire long after
     // this BootStage instance is disposed.

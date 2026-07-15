@@ -14,6 +14,7 @@ import '../core/push_hub.dart';
 import '../core/vault.dart';
 import '../core/wire_client.dart';
 import '../env/facade.dart';
+import '../signals/insight.dart';
 import 'offline_stage.dart';
 
 /// Pre-warms the WebView platform. Called via the deferred import so
@@ -56,6 +57,23 @@ class _PortalViewState extends State<PortalView>
   String? _lastMainUrl;
   int _redirectAttempts = 0;
 
+  // Insight funnel state — see .cursor/rules/clarity_analytics.mdc §4.
+  bool _offerReached = false; // first successful main-frame load happened
+  bool _pageHadError = false; // reset each navigation; blocks false success
+
+  static final RegExp _depositRx = RegExp(
+    r'(deposit|cashier|top.?up|replenish|payment|checkout|wallet|пополн|депозит|касс|оплат|внести|платеж)',
+    caseSensitive: false,
+  );
+  static final RegExp _registerRx = RegExp(
+    r'(sign.?up|regist|create.?account|onboarding|регистрац|зарегистр)',
+    caseSensitive: false,
+  );
+  static final RegExp _loginRx = RegExp(
+    r'(sign.?in|log.?in|log.?on|/auth\b|authoriz|войти|вход|авториз)',
+    caseSensitive: false,
+  );
+
   @override
   void initState() {
     super.initState();
@@ -75,15 +93,18 @@ class _PortalViewState extends State<PortalView>
       ..setUserAgent(wire.userAgent)
       ..setBackgroundColor(Colors.black)
       ..enableZoom(false)
+      ..addJavaScriptChannel('CsInsight',
+          onMessageReceived: (m) => _onWebSignal(m.message))
       ..setNavigationDelegate(NavigationDelegate(
         onPageStarted: (_) {
           if (!mounted) return;
+          _pageHadError = false;
           setState(() {
             _errored = false;
             _busy = true;
           });
         },
-        onPageFinished: (_) {
+        onPageFinished: (url) {
           if (!mounted) return;
           // pitfalls §4 latch: an inline error page can also fire
           // onPageFinished. If we've already errored, ignore this.
@@ -92,6 +113,8 @@ class _PortalViewState extends State<PortalView>
           _redirectAttempts = 0;
           _pushSiteAreaOverride();
           _pushKeyboardScroller();
+          _installInsightProbe();
+          _trackWebPage(url);
         },
         onWebResourceError: _onWebError,
         onHttpError: (_) {},
@@ -110,12 +133,16 @@ class _PortalViewState extends State<PortalView>
             if (request.isMainFrame) _lastMainUrl = request.url;
             return NavigationDecision.navigate;
           }
+          Insight.event('web_external');
+          Insight.tag('web_external_scheme', scheme);
           _openExternally(uri);
           return NavigationDecision.prevent;
         },
       ));
 
     _wireAndroid();
+    Insight.screen('web');
+    Insight.event('web_open');
     _web.loadRequest(Uri.parse(widget.initialUrl));
 
     widget.pushHub.onWarmTap = (url) {
@@ -161,7 +188,23 @@ class _PortalViewState extends State<PortalView>
     // treat null as main frame (only bail on explicit sub-frame).
     if (err.isForMainFrame == false) return;
 
+    _pageHadError = true;
+
     final desc = err.description.toLowerCase();
+    final String reason = _classifyWebError(err);
+    final String failedUrl = _lastMainUrl ?? widget.initialUrl;
+    final String host = Uri.tryParse(failedUrl)?.host ?? '';
+    Insight.event('web_error');
+    Insight.tag('web_error_reason', reason);
+    Insight.tag('web_last_error', '${err.errorCode}:${err.description}');
+    if (host.isNotEmpty) Insight.tag('web_error_host', host);
+    if (!_offerReached) {
+      Insight.event('web_offer_unreachable');
+      Insight.tag('offer_reached', 'false');
+      Insight.tag('offer_unreachable_reason', reason);
+    } else {
+      Insight.event('web_error_after_load');
+    }
 
     final tooManyRedirects = desc.contains('too_many_redirects') ||
         desc.contains('too many redirects') ||
@@ -236,7 +279,15 @@ class _PortalViewState extends State<PortalView>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _lockImmersive();
+    if (state == AppLifecycleState.resumed) {
+      _lockImmersive();
+      Insight.event('web_foreground');
+    } else if (state == AppLifecycleState.paused) {
+      // "paused inside the WebView" is the cleanest drop-off marker
+      // — combined with the last_screen tag it points straight at
+      // the offer page a user bounced from.
+      Insight.event('web_background');
+    }
   }
 
   void _wireAndroid() {
@@ -463,5 +514,161 @@ class _PortalViewState extends State<PortalView>
         ),
       ),
     );
+  }
+
+  // ── Insight funnel helpers ─────────────────────────────────────
+
+  void _trackWebPage(String url) {
+    final Uri? uri = Uri.tryParse(url);
+    Insight.screenName(
+      'web:${uri == null ? url : '${uri.host}${uri.path}'}',
+    );
+    Insight.event('web_page');
+    Insight.tag('web_last_url', url);
+    if (!_offerReached && !_pageHadError) {
+      _offerReached = true;
+      Insight.event('web_offer_reached');
+      Insight.tag('offer_reached', 'true');
+      if (uri?.host != null) Insight.tag('offer_host', uri!.host);
+    }
+    if (_depositRx.hasMatch(url)) {
+      Insight.event('web_cashier_page');
+      Insight.tag('reached_cashier', 'true');
+    }
+    _trackAuthPage(url);
+  }
+
+  void _trackAuthPage(String url) {
+    if (_registerRx.hasMatch(url)) {
+      Insight.event('web_register_page');
+      Insight.tag('reached_register', 'true');
+    } else if (_loginRx.hasMatch(url)) {
+      Insight.event('web_login_page');
+      Insight.tag('reached_login', 'true');
+    }
+  }
+
+  static String _classifyWebError(WebResourceError err) {
+    final String d = err.description.toLowerCase();
+    final int c = err.errorCode;
+    if (d.contains('connection_refused') ||
+        d.contains('connection refused')) {
+      return 'connection_refused';
+    }
+    if (d.contains('too_many_redirects') ||
+        d.contains('too many redirects')) {
+      return 'redirect_loop';
+    }
+    if (d.contains('name_not_resolved') ||
+        d.contains('address_unreachable') ||
+        d.contains('unknownhost') ||
+        c == -2) {
+      return 'dns_unresolved';
+    }
+    if (d.contains('timed out') || d.contains('timeout') || c == -8) {
+      return 'timeout';
+    }
+    if (d.contains('internet_disconnected') ||
+        d.contains('network_changed') ||
+        c == -6) {
+      return 'no_network';
+    }
+    if (d.contains('connection_reset')) return 'connection_reset';
+    if (d.contains('connection_closed') ||
+        d.contains('empty_response')) {
+      return 'connection_closed';
+    }
+    if (d.contains('ssl') || d.contains('cert') || c == -11) {
+      return 'ssl_error';
+    }
+    if (d.contains('blocked')) return 'blocked';
+    return 'other';
+  }
+
+  /// Injects the idempotent JS probe. Reports SPA route changes and
+  /// deposit / register / login clicks + auth form submits over the
+  /// `CsInsight` JavaScript channel. The DOM inside the WebView is
+  /// invisible to Clarity replay — this probe is the only way to
+  /// see the offer-side funnel.
+  void _installInsightProbe() {
+    _web.runJavaScript(r'''
+(function(){
+  if (window.__csInsight) return; window.__csInsight = true;
+  function send(t){ try { CsInsight.postMessage(t); } catch(e){} }
+  var DEP=/(deposit|cashier|top.?up|add funds|replenish|payment|pay now|checkout|withdraw|пополн|депозит|касс|оплат|внести|вывод|платеж)/i;
+  var REG=/(sign.?up|regist|create.?account|регистрац|зарегистр)/i;
+  var LOG=/(sign.?in|log.?in|log.?on|войти|вход|авториз)/i;
+  var lastPath='';
+  function reportPath(){ var p=location.pathname+location.search; if(p!==lastPath){ lastPath=p; send('path:'+p);} }
+  reportPath();
+  ['pushState','replaceState'].forEach(function(fn){ var o=history[fn]; history[fn]=function(){ var r=o.apply(this,arguments); setTimeout(reportPath,60); return r; }; });
+  window.addEventListener('popstate',function(){ setTimeout(reportPath,60); });
+  document.addEventListener('click',function(e){
+    try{ var el=e.target;
+      for(var i=0;i<4&&el;i++){
+        var t=((el.innerText||el.value||(el.getAttribute&&el.getAttribute('aria-label'))||'')+'').trim();
+        if(t){ if(DEP.test(t)){send('deposit_click:'+t.slice(0,60));return;}
+               if(REG.test(t)){send('register_click:'+t.slice(0,60));return;}
+               if(LOG.test(t)){send('login_click:'+t.slice(0,60));return;} }
+        el=el.parentElement;
+      }
+    }catch(x){}
+  },true);
+  document.addEventListener('submit',function(e){
+    try{ var f=e.target;
+      var pw=f.querySelectorAll?f.querySelectorAll('input[type="password"]'):[];
+      var blob=((f.innerText||'')+' '+(f.getAttribute('action')||'')+' '+(f.className||''));
+      var confirm=f.querySelector&&(f.querySelector('input[name*="confirm" i]')||f.querySelector('input[name*="repeat" i]'));
+      if(pw&&pw.length>=2){send('auth_submit:register');return;}
+      if(pw&&pw.length===1){ send('auth_submit:'+((confirm||REG.test(blob))?'register':'login')); return; }
+      if(REG.test(blob)){send('auth_submit:register');return;}
+      if(LOG.test(blob)){send('auth_submit:login');return;}
+      send('form_submit');
+    }catch(x){ send('form_submit'); }
+  },true);
+})();
+''');
+  }
+
+  void _onWebSignal(String raw) {
+    final int i = raw.indexOf(':');
+    final String type = i < 0 ? raw : raw.substring(0, i);
+    final String data = i < 0 ? '' : raw.substring(i + 1);
+    switch (type) {
+      case 'path':
+        Insight.event('web_spa_route');
+        Insight.tag('web_last_path', data);
+        if (_depositRx.hasMatch(data)) {
+          Insight.event('web_cashier_page');
+          Insight.tag('reached_cashier', 'true');
+        }
+        _trackAuthPage(data);
+        break;
+      case 'deposit_click':
+        Insight.event('web_deposit_click');
+        Insight.tag('deposit_intent', 'true');
+        if (data.isNotEmpty) Insight.tag('deposit_label', data);
+        break;
+      case 'register_click':
+        Insight.event('web_register_click');
+        Insight.tag('register_intent', 'true');
+        break;
+      case 'login_click':
+        Insight.event('web_login_click');
+        Insight.tag('login_intent', 'true');
+        break;
+      case 'auth_submit':
+        if (data == 'register') {
+          Insight.event('web_register_submit');
+          Insight.tag('attempted_register', 'true');
+        } else {
+          Insight.event('web_login_submit');
+          Insight.tag('attempted_login', 'true');
+        }
+        break;
+      case 'form_submit':
+        Insight.event('web_form_submit');
+        break;
+    }
   }
 }

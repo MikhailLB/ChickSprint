@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../signals/insight.dart';
+
 /// OfflineStage — shown when we cannot reach the network. The full
 /// artwork lives in the static asset (portrait + landscape variants);
 /// we overlay a "Reconnect" pill near the bottom edge.
@@ -22,8 +24,15 @@ class OfflineStage extends StatefulWidget {
 class _OfflineStageState extends State<OfflineStage> {
   bool _busy = false;
 
+  @override
+  void initState() {
+    super.initState();
+    Insight.screen('offline');
+  }
+
   Future<void> _handleTap() async {
     if (_busy) return;
+    Insight.event('offline_retry');
     setState(() => _busy = true);
     // Brief pause so the busy state is visible even on instant retries.
     await Future<void>.delayed(const Duration(milliseconds: 250));
