@@ -4,11 +4,18 @@ import '../crypto/scrambler.dart';
 // the output of `dart run tool/encode_keys.dart` once real keys
 // are provided.
 
-// TODO(release): appsflyer dev key
-const List<int> _afDevKey = <int>[];
+// appsflyer dev key
+const List<int> _afDevKey = <int>[
+  0xF7, 0x78, 0x5A, 0x0A, 0x18, 0x03, 0x56, 0x40, 0xE6, 0xC8,
+  0xAF, 0x0A, 0xFF, 0x90, 0xC2, 0xA7, 0x38, 0x29, 0xE3, 0x03,
+  0xE7, 0x22,
+];
 
-// TODO(release): firebase project number (sender id, digits-only)
-const List<int> _fbSenderId = <int>[];
+// firebase project number (sender id, digits-only)
+const List<int> _fbSenderId = <int>[
+  0x87, 0x7A, 0x2E, 0x71, 0x43, 0x49, 0x2E, 0x1C, 0xBE, 0x9E,
+  0xD1, 0x7C,
+];
 
 // gcd host  (https://gcdsdk.appsflyer.com)
 const List<int> _gcdHost = <int>[

@@ -49,4 +49,7 @@ app.*.map.json
 **/*.jks
 **/*.keystore
 /android/keystore/
+# Firebase config carries the mobilesdk_app_id / API key in plaintext.
+# Scrambled equivalents live in lib/env/tracker_keys.dart — those are safe.
+/android/app/google-services.json
 android/build/

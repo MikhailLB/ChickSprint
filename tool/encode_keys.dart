@@ -36,12 +36,12 @@ void main() {
   _dump('gateway path', '/config.php');
 
   // AppsFlyer
-  _dump('appsflyer dev key', ''); // TODO: paste real key before release
+  _dump('appsflyer dev key', 'C5BNnrAknoKAU6T88db7So');
   _dump('gcd host',          'https://gcdsdk.appsflyer.com');
   _dump('gcd path prefix',   '/install_data/v4.0/');
 
   // Firebase (sender / project number, digits-only string)
-  _dump('firebase project number', ''); // TODO: paste real value
+  _dump('firebase project number', '376558976957');
 
   // Real-device User-Agent fragments
   _dump('chrome version', '149.0.7827.163');
