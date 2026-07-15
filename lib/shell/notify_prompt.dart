@@ -110,15 +110,23 @@ class NotifyPrompt extends StatelessWidget {
                   right: 0,
                   bottom: size.height * 0.05,
                   child: Center(
-                    child: SizedBox(
-                      width: size.width * 0.34,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          accept,
-                          const SizedBox(height: 8),
-                          skip,
-                        ],
+                    // Nudge the button stack 8 px to the left so it
+                    // lines up with the composition in
+                    // assets/Horizontal_Notifications_Screen.webp
+                    // (the artwork's speech bubble sits slightly
+                    // left of the geometric centre).
+                    child: Transform.translate(
+                      offset: const Offset(-8, 0),
+                      child: SizedBox(
+                        width: size.width * 0.34,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            accept,
+                            const SizedBox(height: 8),
+                            skip,
+                          ],
+                        ),
                       ),
                     ),
                   ),
