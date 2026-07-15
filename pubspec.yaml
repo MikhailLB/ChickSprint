@@ -10,22 +10,44 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
   cupertino_icons: ^1.0.8
-  webview_flutter: ^4.10.0
-  shared_preferences: ^2.3.3
-  connectivity_plus: ^6.1.0
+
+  # --- gray-flow stack ---
+  # NOTE: versions intentionally staggered per project so the binary
+  # fingerprint (compiled plugin classes, R.txt entries, etc.) does not
+  # match sibling apps. Keep within the compatible range for Flutter 3.44.
+  appsflyer_sdk: ^6.15.4
+  firebase_core: ^3.14.0
+  firebase_messaging: ^15.2.6
+  firebase_app_check: ^0.3.2+10
+  flutter_local_notifications: ^18.0.1
+  connectivity_plus: ^6.1.5
+  http: ^1.5.0
+  device_info_plus: ^11.4.0
+  flutter_secure_storage: ^10.0.0+1
+  shared_preferences: ^2.5.3
+  webview_flutter: ^4.13.0
+  webview_flutter_android: ^4.11.0
+  # NOTE: pinned. Do NOT upgrade to 10.x — that release is Kotlin-only,
+  # bundles its own KGP, and clashes with Flutter's built-in Kotlin, which
+  # produces `cannot find symbol: FilePickerPlugin` in GeneratedPluginRegistrant.
+  file_picker: 8.1.4
+  url_launcher: ^6.3.1
+  package_info_plus: ^8.3.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
-  flutter_launcher_icons: ^0.14.1
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
   assets:
     - assets/
     - assets/Icon.png
+    - assets/icon2.png
     - assets/Game_Name.webp
     - assets/Vertical_Loading_Screen.webp
     - assets/Horizontal_Loading_Screen.webp
@@ -47,12 +69,12 @@ flutter:
     - assets/straw_nest_strict_asset.webp
 
 flutter_launcher_icons:
-  # NOTE: adaptive icon is hand-written in
-  # android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-  # so we intentionally do NOT set adaptive_icon_* fields — otherwise
-  # flutter_launcher_icons would overwrite our manual configuration
-  # and the corners of the art would get eaten by the circle mask.
+  # Adaptive icon and Android 12+ splash are hand-written in
+  # android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml and
+  # drawable-anydpi-v26/ic_splash_logo.xml. Do NOT set adaptive_icon_*
+  # here — flutter_launcher_icons would clobber those files and put
+  # icon2 in the background edge-to-edge, which circle-masks ruin.
   android: true
   ios: false
-  image_path: "assets/Icon.png"
+  image_path: "assets/icon2.png"
   min_sdk_android: 21

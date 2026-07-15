@@ -1,38 +1,65 @@
+import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'screens/loading_screen.dart';
+import 'app_root.dart';
+import 'core/gateway_api.dart';
+import 'core/net_sensor.dart';
+import 'core/push_hub.dart';
+import 'core/tracker_hub.dart';
+import 'core/vault.dart';
+import 'core/wire_client.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const ChickSprintApp());
-}
 
-class ChickSprintApp extends StatelessWidget {
-  const ChickSprintApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        systemNavigationBarColor: Color(0xFF2E7D32),
-        systemNavigationBarIconBrightness: Brightness.light,
-      ),
+  // Firebase + App Check. App Check swallows a bunch of production
+  // 403s from the gateway when the debug provider is not registered
+  // in the Firebase console. See gray guide bug #7.
+  try {
+    await Firebase.initializeApp();
+    await FirebaseAppCheck.instance.activate(
+      androidProvider: kDebugMode
+          ? AndroidProvider.debug
+          : AndroidProvider.playIntegrity,
     );
-    return MaterialApp(
-      title: 'Chick Sprint',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFFFC107),
-          brightness: Brightness.light,
-        ),
-        fontFamily: 'Roboto',
-      ),
-      home: const LoadingScreen(),
-    );
+  } catch (_) {
+    // Firebase not configured — the app continues without Firebase
+    // (no push, no App Check). Gateway still works.
   }
+
+  // Loading + Portal need both orientations. The white game locks
+  // itself back to portrait when it takes over.
+  await SystemChrome.setPreferredOrientations(<DeviceOrientation>[
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.light,
+    systemNavigationBarColor: Color(0xFF0A0700),
+    systemNavigationBarIconBrightness: Brightness.light,
+  ));
+
+  await wire.boot();
+
+  final vault = Vault();
+  await vault.boot();
+
+  final netSensor = NetSensor();
+  final trackerHub = TrackerHub();
+  final gatewayApi = GatewayApi(vault);
+  final pushHub = PushHub(vault);
+
+  runApp(ChickSprintApp(
+    vault: vault,
+    netSensor: netSensor,
+    trackerHub: trackerHub,
+    gatewayApi: gatewayApi,
+    pushHub: pushHub,
+  ));
 }

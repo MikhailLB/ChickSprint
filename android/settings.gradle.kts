@@ -19,8 +19,13 @@ pluginManagement {
 
 plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
-    id("com.android.application") version "9.0.1" apply false
-    id("org.jetbrains.kotlin.android") version "2.3.20" apply false
+    // AGP 9.x rejects the classic block-DSL (`android { … }`,
+    // `kotlinOptions { … }`) at Kotlin script compile time. Pin to
+    // the last 8.x line which the gray-flow toolchain and AppsFlyer
+    // 6.15.x plugins are known to work with.
+    id("com.android.application") version "8.11.1" apply false
+    id("org.jetbrains.kotlin.android") version "2.2.20" apply false
+    id("com.google.gms.google-services") version "4.4.2" apply false
 }
 
 include(":app")

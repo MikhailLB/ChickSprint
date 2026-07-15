@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Android 12+ splash requires an AdaptiveIconDrawable. A flat PNG here
-    silently falls back to the launcher icon and looks clipped. Keep this
-    file identical in structure to mipmap-anydpi-v26/ic_launcher.xml so
-    that the splash matches the icon on the launcher exactly.
+    Splash-screen icon for the Android 12+ SplashScreen API.
+
+    IMPORTANT: this MUST be an AdaptiveIconDrawable. A flat PNG here
+    is silently rejected by the platform, which then falls back to the
+    launcher icon rendered at the wrong scale (looks clipped/blurred).
+    Keep in sync with mipmap-anydpi-v26/ic_launcher.xml above.
 -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@color/launch_bg" />
@@ -12,4 +14,9 @@
             android:drawable="@drawable/ic_launcher_foreground"
             android:inset="14%" />
     </foreground>
+    <monochrome>
+        <inset
+            android:drawable="@drawable/ic_launcher_foreground"
+            android:inset="14%" />
+    </monochrome>
 </adaptive-icon>

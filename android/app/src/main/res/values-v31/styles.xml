@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Android 12+ splash: platform-level SplashScreen API. -->
+    <!-- Android 12+ SplashScreen API. Feeds the platform an
+         AdaptiveIconDrawable so the splash shape is identical to the
+         home launcher icon under any mask (circle, squircle, teardrop). -->
     <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowSplashScreenBackground">@color/launch_bg</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
-        <!-- Background used behind Flutter until first frame is drawn. -->
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/launch_bg</item>
         <item name="android:windowBackground">@color/launch_bg</item>
     </style>
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
-        <item name="android:windowBackground">?android:colorBackground</item>
+        <item name="android:windowBackground">@color/launch_bg</item>
     </style>
 </resources>

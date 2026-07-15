@@ -1,4 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Adaptive launcher icon. Kept intentionally symmetric with
+    drawable-anydpi-v26/ic_splash_logo.xml so the Android 12+ splash
+    icon and the desktop shortcut are visually identical.
+
+    Foreground is inset 14% so the illustrated corners (yellow lightning
+    strokes) survive every mask shape — Pixel circle, Samsung squircle,
+    OneUI teardrop.
+
+    If corners still look clipped: bump inset to 17 – 19 %.
+    If the art looks too small inside the mask: drop inset to 10 – 12 %.
+-->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@color/launch_bg" />
     <foreground>
@@ -6,4 +18,9 @@
             android:drawable="@drawable/ic_launcher_foreground"
             android:inset="14%" />
     </foreground>
+    <monochrome>
+        <inset
+            android:drawable="@drawable/ic_launcher_foreground"
+            android:inset="14%" />
+    </monochrome>
 </adaptive-icon>

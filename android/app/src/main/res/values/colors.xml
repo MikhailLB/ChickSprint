@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Dark leafy-green tone matched to the icon's corner grass. -->
-    <color name="launch_bg">#2E5A1A</color>
+    <!-- Dark tone matching the corners of icon2 (money-mode rooster
+         on near-black with yellow lightning). Used for launch_bg,
+         Android 12+ splash background and the pre-31 launch drawable. -->
+    <color name="launch_bg">#0A0700</color>
+
+    <!-- Colored accent applied by the system when the small
+         notification icon is tinted. -->
+    <color name="notification_accent">#FFAB00</color>
 </resources>
