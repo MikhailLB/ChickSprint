@@ -13,8 +13,8 @@ import 'portal_view.dart' deferred as portal;
 /// Buttons:
 ///   • ACCEPT — fires the system permission dialog. On denial the
 ///     OS-banned latch is set inside PushHub.requestPermission.
-///   • SKIP   — defers the prompt for [EnvFacade.notifyCooldownSeconds]
-///     and continues to the portal.
+///   • SKIP   — same gradient chip as Accept, but defers the prompt
+///     for [EnvFacade.notifyCooldownSeconds].
 class NotifyPrompt extends StatelessWidget {
   const NotifyPrompt({
     super.key,
@@ -72,48 +72,61 @@ class NotifyPrompt extends StatelessWidget {
               ? 'assets/Vertical_Notifications_Screen.webp'
               : 'assets/Horizontal_Notifications_Screen.webp';
           final size = MediaQuery.of(context).size;
+          final accept = _GradientChip(
+            label: 'ACCEPT',
+            compact: !portrait,
+            onTap: () => _handleAccept(context),
+          );
+          final skip = _GradientChip(
+            label: 'SKIP',
+            compact: !portrait,
+            onTap: () => _handleSkip(context),
+          );
 
           return Stack(
             fit: StackFit.expand,
             children: [
               Image.asset(artwork, fit: BoxFit.cover),
-              if (portrait)
-                Positioned(
-                  left: size.width * 0.08,
-                  right: size.width * 0.08,
-                  bottom: size.height * 0.06,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _AcceptChip(onTap: () => _handleAccept(context)),
-                      const SizedBox(height: 14),
-                      _SkipLink(onTap: () => _handleSkip(context)),
-                    ],
-                  ),
-                )
-              else
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: size.height * 0.05,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        width: size.width * 0.34,
-                        child: _AcceptChip(
-                          compact: true,
-                          onTap: () => _handleAccept(context),
+              // SafeArea absorbs the landscape camera cutout / display
+              // cutouts on both sides so the buttons never land under
+              // the notch.
+              SafeArea(
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: portrait
+                      ? Padding(
+                          padding: EdgeInsets.only(
+                            left: size.width * 0.08,
+                            right: size.width * 0.08,
+                            bottom: size.height * 0.06,
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              accept,
+                              const SizedBox(height: 12),
+                              skip,
+                            ],
+                          ),
+                        )
+                      : Padding(
+                          padding: EdgeInsets.only(
+                            bottom: size.height * 0.05,
+                          ),
+                          child: SizedBox(
+                            width: size.width * 0.34,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                accept,
+                                const SizedBox(height: 8),
+                                skip,
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      _SkipLink(
-                        compact: true,
-                        onTap: () => _handleSkip(context),
-                      ),
-                    ],
-                  ),
                 ),
+              ),
             ],
           );
         },
@@ -122,17 +135,24 @@ class NotifyPrompt extends StatelessWidget {
   }
 }
 
-class _AcceptChip extends StatefulWidget {
-  const _AcceptChip({required this.onTap, this.compact = false});
+/// Shared button widget. Accept and Skip use the same fiery gradient
+/// so the choice reads as symmetric — only the label differs.
+class _GradientChip extends StatefulWidget {
+  const _GradientChip({
+    required this.label,
+    required this.onTap,
+    this.compact = false,
+  });
 
+  final String label;
   final VoidCallback onTap;
   final bool compact;
 
   @override
-  State<_AcceptChip> createState() => _AcceptChipState();
+  State<_GradientChip> createState() => _GradientChipState();
 }
 
-class _AcceptChipState extends State<_AcceptChip> {
+class _GradientChipState extends State<_GradientChip> {
   bool _pressed = false;
 
   @override
@@ -178,61 +198,13 @@ class _AcceptChipState extends State<_AcceptChip> {
           ),
           child: Center(
             child: Text(
-              'ACCEPT',
+              widget.label,
               style: TextStyle(
                 color: const Color(0xFFFFF8E1),
                 fontSize: fontSize,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 2.2,
               ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SkipLink extends StatefulWidget {
-  const _SkipLink({required this.onTap, this.compact = false});
-  final VoidCallback onTap;
-  final bool compact;
-
-  @override
-  State<_SkipLink> createState() => _SkipLinkState();
-}
-
-class _SkipLinkState extends State<_SkipLink> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapCancel: () => setState(() => _pressed = false),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onTap();
-      },
-      child: AnimatedOpacity(
-        opacity: _pressed ? 0.5 : 0.9,
-        duration: const Duration(milliseconds: 80),
-        child: Padding(
-          padding: EdgeInsets.symmetric(vertical: widget.compact ? 4 : 8),
-          child: Text(
-            'SKIP',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: widget.compact ? 16 : 20,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 3.0,
-              shadows: const [
-                Shadow(
-                  color: Colors.black87,
-                  blurRadius: 6,
-                  offset: Offset(0, 2),
-                ),
-              ],
             ),
           ),
         ),

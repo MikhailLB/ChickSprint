@@ -4,7 +4,6 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:http/http.dart' as http;
 
 import '../crypto/scrambler.dart';
-import '../env/facade.dart';
 
 // Chrome and WebKit version fragments — scrambled so version numbers
 // don't jump out in a strings dump. Rotate whenever we bump the
@@ -51,27 +50,29 @@ class WireClient extends http.BaseClient {
       final info = DeviceInfoPlugin();
       if (Platform.isAndroid) {
         final a = await info.androidInfo;
-        final sdk   = a.version.sdkInt;
+        // `version.release` is the human-facing OS version ("15" on a
+        // Galaxy S25, "14" on a Pixel 8) that Chrome puts in its UA.
+        // Do NOT use `sdkInt` here — that's 35 for Android 15 and
+        // makes the UA read "Android 35" which no real browser sends.
+        final release = a.version.release.isNotEmpty
+            ? a.version.release
+            : '15';
         final brand = a.brand;
         final model = a.model;
         final build = a.display.isNotEmpty ? a.display : a.id;
 
-        return _tagWithIdentity(
-          'Mozilla/5.0 (Linux; Android $sdk; $brand $model Build/$build) '
-          'AppleWebKit/$webkit (KHTML, like Gecko) '
-          'Chrome/$chrome Mobile Safari/$webkit',
-        );
+        return 'Mozilla/5.0 (Linux; Android $release; $brand $model '
+            'Build/$build) AppleWebKit/$webkit (KHTML, like Gecko) '
+            'Chrome/$chrome Mobile Safari/$webkit';
       }
 
       final i = await info.iosInfo;
       final ver = i.systemVersion.replaceAll('.', '_');
-      return _tagWithIdentity(
-        'Mozilla/5.0 (iPhone; CPU iPhone OS $ver like Mac OS X) '
-        'AppleWebKit/$webkit (KHTML, like Gecko) '
-        'Version/${i.systemVersion} Mobile/15E148 Safari/$webkit',
-      );
+      return 'Mozilla/5.0 (iPhone; CPU iPhone OS $ver like Mac OS X) '
+          'AppleWebKit/$webkit (KHTML, like Gecko) '
+          'Version/${i.systemVersion} Mobile/15E148 Safari/$webkit';
     } catch (_) {
-      return _tagWithIdentity(_minimalUa());
+      return _minimalUa();
     }
   }
 
@@ -79,23 +80,13 @@ class WireClient extends http.BaseClient {
     // Fallback used before boot() completes or on device_info failure.
     final chrome = _decodeOr(_chromeVer, '149.0.7827.163');
     final webkit = _decodeOr(_webkitVer, '537.36');
-    return _tagWithIdentity(
-      Platform.isAndroid
-          ? 'Mozilla/5.0 (Linux; Android 15; SM-S931U Build/AP3A.240905.015.A2) '
+    return Platform.isAndroid
+        ? 'Mozilla/5.0 (Linux; Android 15; SM-S931U Build/AP3A.240905.015.A2) '
             'AppleWebKit/$webkit (KHTML, like Gecko) '
             'Chrome/$chrome Mobile Safari/$webkit'
-          : 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) '
+        : 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) '
             'AppleWebKit/$webkit (KHTML, like Gecko) '
-            'Version/17.0 Mobile/15E148 Safari/$webkit',
-    );
-  }
-
-  /// Appends `appid/<bundle> appname/<AppName>` as the trailing
-  /// segment of the UA. Kept in one place so the HTTP client and
-  /// the WebView never drift apart — a mismatch would burn the
-  /// attribution.
-  String _tagWithIdentity(String base) {
-    return '$base appid/${EnvFacade.bundleId} appname/${EnvFacade.appName}';
+            'Version/17.0 Mobile/15E148 Safari/$webkit';
   }
 
   @override

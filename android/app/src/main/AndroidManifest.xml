@@ -57,9 +57,10 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="chick_sprint_alerts" />
-        <meta-data
-            android:name="com.google.firebase.messaging.default_notification_color"
-            android:resource="@color/notification_accent" />
+        <!-- No `default_notification_color` on purpose: the system
+             renders the monochrome flame in pure white by default,
+             which is what we want. -->
+
 
         <meta-data
             android:name="flutterEmbedding"

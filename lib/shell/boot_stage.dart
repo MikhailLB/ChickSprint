@@ -265,18 +265,26 @@ class _BootStageState extends State<BootStage>
   void _swapToOffline({required bool fromFirstLaunch}) {
     if (_left) return;
     _left = true;
+    // Snapshot services now — `widget.*` is safe to read at this point
+    // even though the OfflineStage's retry builder will fire long after
+    // this BootStage instance is disposed.
+    final vault = widget.vault;
+    final netSensor = widget.netSensor;
+    final trackerHub = widget.trackerHub;
+    final gatewayApi = widget.gatewayApi;
+    final pushHub = widget.pushHub;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => OfflineStage(
-        onRetry: () => Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => BootStage(
-            vault: widget.vault,
-            netSensor: widget.netSensor,
-            trackerHub: widget.trackerHub,
-            gatewayApi: widget.gatewayApi,
-            pushHub: widget.pushHub,
-          )),
+      MaterialPageRoute(
+        builder: (_) => OfflineStage(
+          retryScreenBuilder: (_) => BootStage(
+            vault: vault,
+            netSensor: netSensor,
+            trackerHub: trackerHub,
+            gatewayApi: gatewayApi,
+            pushHub: pushHub,
+          ),
         ),
-      )),
+      ),
     );
   }
 
@@ -323,23 +331,28 @@ class _BootStageState extends State<BootStage>
                   ),
                 ),
               ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: portraitMode ? 64 : 26,
+              // SafeArea handles the landscape camera cutout — without
+              // it the loader can end up under the punch-hole on
+              // devices like Galaxy S24/S25.
+              Positioned.fill(
                 child: SafeArea(
-                  top: false,
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: portraitMode ? 40 : 90,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _loadingLabel(),
-                        const SizedBox(height: 14),
-                        _progressCapsule(),
-                      ],
+                  minimum: EdgeInsets.only(bottom: portraitMode ? 64 : 26),
+                  child: Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        left: portraitMode ? 40 : 90,
+                        right: portraitMode ? 40 : 90,
+                        bottom: portraitMode ? 64 : 26,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _loadingLabel(),
+                          const SizedBox(height: 14),
+                          _progressCapsule(),
+                        ],
+                      ),
                     ),
                   ),
                 ),

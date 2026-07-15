@@ -4,14 +4,16 @@ import 'package:flutter/material.dart';
 /// artwork lives in the static asset (portrait + landscape variants);
 /// we overlay a "Reconnect" pill near the bottom edge.
 ///
-/// Button style intentionally diverges from every sibling app:
-///   • Rounded rectangular chip (not a pill)
-///   • Deep-red base with parchment stroke and inner sun-flare shadow
-///   • Text uppercased with a wide letterSpacing
+/// The retry action is deliberately expressed as a [WidgetBuilder]
+/// (a fresh page factory) rather than a bare callback. Using a
+/// callback that captured the previous page's `BuildContext` caused
+/// the reconnect tap to freeze: the source page had already been
+/// disposed by `pushReplacement`, so `Navigator.of(<stale context>)`
+/// referred to a defunct element and did nothing.
 class OfflineStage extends StatefulWidget {
-  const OfflineStage({super.key, required this.onRetry});
+  const OfflineStage({super.key, required this.retryScreenBuilder});
 
-  final VoidCallback onRetry;
+  final WidgetBuilder retryScreenBuilder;
 
   @override
   State<OfflineStage> createState() => _OfflineStageState();
@@ -23,10 +25,12 @@ class _OfflineStageState extends State<OfflineStage> {
   Future<void> _handleTap() async {
     if (_busy) return;
     setState(() => _busy = true);
-    // A short beat so the busy state is visible even on fast retries.
-    await Future<void>.delayed(const Duration(milliseconds: 350));
+    // Brief pause so the busy state is visible even on instant retries.
+    await Future<void>.delayed(const Duration(milliseconds: 250));
     if (!mounted) return;
-    widget.onRetry();
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: widget.retryScreenBuilder),
+    );
   }
 
   @override
@@ -43,17 +47,23 @@ class _OfflineStageState extends State<OfflineStage> {
             fit: StackFit.expand,
             children: [
               Image.asset(artwork, fit: BoxFit.cover),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: portrait ? 42 : 22,
-                child: SafeArea(
-                  top: false,
-                  child: Center(child: _ReconnectChip(
-                    busy: _busy,
-                    onTap: _handleTap,
-                    portrait: portrait,
-                  )),
+              // Landscape: notch/camera cutout is on the top edge of
+              // the physical device, which becomes the left or right
+              // edge of the window. Padding the entire button stack
+              // with SafeArea keeps the "Reconnect" chip clear of the
+              // cutout on either side.
+              SafeArea(
+                minimum: EdgeInsets.only(bottom: portrait ? 42 : 22),
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: EdgeInsets.only(bottom: portrait ? 42 : 22),
+                    child: _ReconnectChip(
+                      busy: _busy,
+                      onTap: _handleTap,
+                      portrait: portrait,
+                    ),
+                  ),
                 ),
               ),
             ],

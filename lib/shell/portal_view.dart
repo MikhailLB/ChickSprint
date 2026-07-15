@@ -196,18 +196,24 @@ class _PortalViewState extends State<PortalView>
     if (_hidden) return;
     _hidden = true;
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(MaterialPageRoute(
-      builder: (_) => OfflineStage(
-        onRetry: () => Navigator.of(context).pushReplacement(MaterialPageRoute(
-          builder: (_) => PortalView(
-            initialUrl: _lastMainUrl ?? widget.initialUrl,
-            vault: widget.vault,
-            pushHub: widget.pushHub,
-            netSensor: widget.netSensor,
+    // Snapshot the details we'll need to re-launch the portal — the
+    // captured references stay valid after this state is torn down.
+    final resumeUrl = _lastMainUrl ?? widget.initialUrl;
+    final vault = widget.vault;
+    final pushHub = widget.pushHub;
+    final netSensor = widget.netSensor;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => OfflineStage(
+          retryScreenBuilder: (_) => PortalView(
+            initialUrl: resumeUrl,
+            vault: vault,
+            pushHub: pushHub,
+            netSensor: netSensor,
           ),
-        )),
+        ),
       ),
-    ));
+    );
   }
 
   void _lockImmersive() {
