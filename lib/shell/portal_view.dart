@@ -413,15 +413,25 @@ class _PortalViewState extends State<PortalView>
         body: Stack(
           fit: StackFit.expand,
           children: [
-            Padding(
-              padding: EdgeInsets.only(
-                top: MediaQuery.of(context).orientation ==
-                        Orientation.landscape
-                    ? 0
-                    : MediaQuery.of(context).viewPadding.top,
-              ),
-              child: WebViewWidget(controller: _web),
-            ),
+            Builder(builder: (context) {
+              final mq = MediaQuery.of(context);
+              final landscape = mq.orientation == Orientation.landscape;
+              // Portrait: only pad the status-bar height at the top
+              //           (immersive hides the nav bar).
+              // Landscape: skip the top pad but keep left+right insets
+              //            so the WebView content clears the camera
+              //            cutout / display cutout on either side.
+              final EdgeInsets pad = landscape
+                  ? EdgeInsets.only(
+                      left: mq.viewPadding.left,
+                      right: mq.viewPadding.right,
+                    )
+                  : EdgeInsets.only(top: mq.viewPadding.top);
+              return Padding(
+                padding: pad,
+                child: WebViewWidget(controller: _web),
+              );
+            }),
             if (_busy)
               const Positioned.fill(
                 child: ColoredBox(
