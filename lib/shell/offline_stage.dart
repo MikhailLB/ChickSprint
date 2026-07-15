@@ -47,22 +47,19 @@ class _OfflineStageState extends State<OfflineStage> {
             fit: StackFit.expand,
             children: [
               Image.asset(artwork, fit: BoxFit.cover),
-              // Landscape: notch/camera cutout is on the top edge of
-              // the physical device, which becomes the left or right
-              // edge of the window. Padding the entire button stack
-              // with SafeArea keeps the "Reconnect" chip clear of the
-              // cutout on either side.
-              SafeArea(
-                minimum: EdgeInsets.only(bottom: portrait ? 42 : 22),
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Padding(
-                    padding: EdgeInsets.only(bottom: portrait ? 42 : 22),
-                    child: _ReconnectChip(
-                      busy: _busy,
-                      onTap: _handleTap,
-                      portrait: portrait,
-                    ),
+              // Sit the Reconnect chip flush with the artwork — no
+              // SafeArea here; the invisible system-bar inset was
+              // pushing the button visibly higher than where the
+              // background art wants it.
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: portrait ? 42 : 22,
+                child: Center(
+                  child: _ReconnectChip(
+                    busy: _busy,
+                    onTap: _handleTap,
+                    portrait: portrait,
                   ),
                 ),
               ),

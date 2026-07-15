@@ -87,46 +87,42 @@ class NotifyPrompt extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               Image.asset(artwork, fit: BoxFit.cover),
-              // SafeArea absorbs the landscape camera cutout / display
-              // cutouts on both sides so the buttons never land under
-              // the notch.
-              SafeArea(
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: portrait
-                      ? Padding(
-                          padding: EdgeInsets.only(
-                            left: size.width * 0.08,
-                            right: size.width * 0.08,
-                            bottom: size.height * 0.06,
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              accept,
-                              const SizedBox(height: 12),
-                              skip,
-                            ],
-                          ),
-                        )
-                      : Padding(
-                          padding: EdgeInsets.only(
-                            bottom: size.height * 0.05,
-                          ),
-                          child: SizedBox(
-                            width: size.width * 0.34,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                accept,
-                                const SizedBox(height: 8),
-                                skip,
-                              ],
-                            ),
-                          ),
-                        ),
+              // Anchor the buttons directly to the raw screen edges —
+              // no SafeArea. The invisible system-bar inset was
+              // shifting the button stack visibly upward.
+              if (portrait)
+                Positioned(
+                  left: size.width * 0.08,
+                  right: size.width * 0.08,
+                  bottom: size.height * 0.06,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      accept,
+                      const SizedBox(height: 12),
+                      skip,
+                    ],
+                  ),
+                )
+              else
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: size.height * 0.05,
+                  child: Center(
+                    child: SizedBox(
+                      width: size.width * 0.34,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          accept,
+                          const SizedBox(height: 8),
+                          skip,
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-              ),
             ],
           );
         },
